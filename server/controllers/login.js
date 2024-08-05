@@ -333,7 +333,7 @@ exports.popularCanteens=async(req,res)=>{
 exports.logout=async(req,res)=>{
  const options = {
    httpOnly: true,
-   sameSite: "Lax",
+   sameSite: "None",
    secure: true,
    expires: new Date(Date.now() - 1000),
  };

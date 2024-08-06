@@ -10,7 +10,8 @@ import { formatDate } from "../../utils/formatDate";
 import { setOrderHistory } from "../../slices/orderHistorySlice";
 import Pagination from "../common/Pagination";
 import ViewDetailsModal from "../common/ViewDetailsModal";
-import { resetPagination, setAllItems, setPagination } from "../../slices/paginationSlice";
+import { resetPagination, setPagination } from "../../slices/paginationSlice";
+import { setLiveOrders } from "../../slices/notificationSlice";
 
 const CanteenDashboard = () => {
 
@@ -18,26 +19,34 @@ const CanteenDashboard = () => {
     const dispatch = useDispatch();
     const canteenDetails = useSelector(store => store.canteen.canteenDetails);
     const orderHistory = useSelector(store => store.orderHistory);
+    const liveOrders = useSelector(store => store.liveOrders);
     const paginationData = useSelector(store => store.pagination);
     const { allItems,currentItems,itemsPerPage,currentPageNo } = paginationData;
     const [isOpen,setIsOpen] = useState(false);
     const [showOrder,setShowOrder] = useState(null);
+    const [loading,setLoading] = useState(true);
     
     useEffect(()=>{
-        getOrderHistory({shopid:id},dispatch)
-        .then(()=>getCanteenDetails(id,dispatch))
+        getOrderHistory({ shopid: id }, dispatch)
+        .then(()=>getCanteenDetails(id, dispatch))
+        .then(()=> setLoading(false));
 
         return ()=>{
             console.log('dismount')
             dispatch(setCanteenDetails(null));
             dispatch(setOrderHistory([]));
+            localStorage.removeItem('orderHistory');
             dispatch(resetPagination());
             localStorage.removeItem('pagination');
         }
     },[id]);
 
     useEffect(()=>{
-        const paginationData = {allItems:orderHistory, currentItems: currentItems.length ? currentItems :orderHistory.slice(0,10), 
+        const totalItems = orderHistory.length;
+        const totalPages = Math.ceil(totalItems/itemsPerPage);
+        const start = currentPageNo*itemsPerPage - itemsPerPage;
+        const end = currentPageNo===totalPages ? totalItems : currentPageNo*itemsPerPage;
+        const paginationData = {allItems:orderHistory, currentItems:orderHistory.slice(start,end), 
         itemsPerPage: 10, currentPageNo: currentPageNo ? currentPageNo : 1, scrollTo: 'orderHistory'};
         dispatch(setPagination(paginationData));
         localStorage.setItem('pagination',JSON.stringify(paginationData));
@@ -59,8 +68,19 @@ const CanteenDashboard = () => {
         formData.append("orderid",id);
         formData.append("status",status);
         updateOrderStatus(formData).then(()=>{
+            //updating orderhistory
             const updatedOrderHistory = orderHistory.map((order)=> order._id===id ? {...order,status:status}: order);
             dispatch(setOrderHistory(updatedOrderHistory));
+            //removing completed orders from live notification
+            if(status==='completed'){
+                const updatedLiveOrders = liveOrders.filter((order) => {
+                    if(order._id!==id){
+                        return order;
+                    }
+                });
+                dispatch(setLiveOrders(updatedLiveOrders));
+            }
+            //changes for pagination
             const totalItems = allItems.length;
             const totalPages = Math.ceil(totalItems/itemsPerPage);
             const start = currentPageNo*itemsPerPage - itemsPerPage;
@@ -73,7 +93,7 @@ const CanteenDashboard = () => {
 
     return (
     <div className="flex flex-col justify-center items-center">
-        {!canteenDetails? <div className="mt-[10%] -ml-[15%]"><Spinner/></div> 
+        {(loading || !orderHistory|| canteenDetails===null)? <div className="mt-[10%] -ml-[15%]"><Spinner/></div> 
         : <div className="w-[85%] h-fit pb-12 mt-14 relative">
             <h1 className="relative -mt-[22%] sm:-mt-[17%] md:-mt-[15%] lg:-mt-[17%] xl:-mt-[7%] sm:-ml-3 md:-ml-4 text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold">Canteen Dashboard</h1>
             <div className="grid grid-cols-12 w-full">
@@ -152,7 +172,7 @@ const CanteenDashboard = () => {
                         })}
                     </div>
                     {isOpen && <ViewDetailsModal close={handleToggleViewDetails} order={showOrder}/>}
-                    {orderHistory && <span className="-ml-20"><Pagination/></span>}
+                    {orderHistory && <span className="sm:-ml-20"><Pagination/></span>}
                 </>}
             </div>
         </div>}

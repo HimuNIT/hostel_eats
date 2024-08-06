@@ -30,6 +30,8 @@ const Header = () => {
     const liveOrders = useSelector(store => store.liveOrders);
     const [confirmationalModal,setConfirmationalModal] = useState(null);
     const {currTab} = useSelector(store => store.tabInfo);
+    const paginationData = useSelector(store => store.pagination);
+    const { allItems,itemsPerPage,currentPageNo } = paginationData;
     const [showDropDownMenu,setShowDropDownMenu] = useState(false);
     const [showNotification,setShowNotification] = useState(false);
     const navigate = useNavigate();
@@ -47,6 +49,7 @@ const Header = () => {
                 //for owner
                 dispatch(addOrder(order));
                 dispatch(addLiveOrder(order));
+                // console.log([order,...orderHistory]);
                 const paginationData = {allItems:[order,...orderHistory], currentItems:[order,...orderHistory].slice(0,10), 
                 itemsPerPage: 10, currentPageNo: 1, scrollTo: 'orderHistory'};
                 dispatch(setPagination(paginationData));
@@ -55,6 +58,14 @@ const Header = () => {
             const handleOrderStatusUpdate = (orderStatus)=>{
                 //for user
                 dispatch(setOrderStatus(orderStatus));
+                const updatedOrderHistory = orderHistory.map((order) => order._id===orderStatus.orderid ? {...order,status:orderStatus.status}: order);
+                const totalItems = allItems.length;
+                const totalPages = Math.ceil(totalItems/itemsPerPage);
+                const start = currentPageNo*itemsPerPage - itemsPerPage;
+                const end = currentPageNo===totalPages ? totalItems : currentPageNo*itemsPerPage;
+                const paginationData = {allItems:updatedOrderHistory, currentItems:updatedOrderHistory.slice(start,end), 
+                itemsPerPage: 10, currentPageNo: currentPageNo, scrollTo: 'orderHistory'};
+                dispatch(setPagination(paginationData));
             }
             socket.on("newOrder", handleNewOrder);
             socket.on("orderStatusUpdate", handleOrderStatusUpdate);
@@ -63,7 +74,7 @@ const Header = () => {
                 socket.off("orderStatusUpdate", handleOrderStatusUpdate);
             }
         }
-    },[user]);
+    },[user,orderHistory]);
     
     const handleUserIconClick = ()=>{
         navigate('/dashboard/my-profile');
@@ -98,8 +109,8 @@ const Header = () => {
     }
 
     return (
-        <div className="fixed w-full z-50 flex bg-gradient-to-r from-black to-[#222831] text-white pt-10 pb-4">
-            <h1 className={`${user?'ml-[34%]':'ml-[38%]'} sm:ml-[8%] md:ml-[10%] text-xl sm:text-xl lg:text-3xl`}>Hostel Eats</h1>
+        <div className="fixed w-full z-40 flex bg-gradient-to-r from-black to-[#222831] text-white pt-10 pb-4">
+            <h1 className={`${user?'ml-[34%]':'ml-[38%]'} sm:ml-[8%] md:ml-[10%] text-xl sm:text-xl lg:text-3xl`} onClick={()=>navigate('/')}>Hostel Eats</h1>
             <div className={`hidden sm:flex  sm:gap-4 lg:gap-7 sm:text-sm lg:text-base mt-1 ${user ? "sm:ml-[18%] md:ml-[20%] lg:ml-[22%] xl:ml-[24%]":'sm:ml-[10%] md:ml-[14%] lg:ml-[18%]'}`}>
                 {tabs.map(tab => <span key={tab.name}><Tab><NavLink to={tab.to} className={({isActive}) => ` ${isActive?"text-[#76ABAE]":""}`}>{tab.name}</NavLink></Tab></span>)}
             </div>
@@ -130,11 +141,11 @@ const Header = () => {
                 </AnimatePresence> 
                 <div className="absolute sm:-right-4 lg:-right-6"><IoMdArrowDropdown className="arrowLogo group-hover:rotate-180 transition-transform ease-out duration-200"/></div>
             </div></>}
-            {user?.accountType==="Customer" && <span className="absolute sm:-mt-1 right-5 sm:right-[7%] cursor-pointer" onClick={()=>{navigate('/dashboard/cart')}}>
+            {user && user?.accountType==="Customer" && <span className="absolute sm:-mt-1 right-5 sm:right-[7%] cursor-pointer" onClick={()=>{navigate('/dashboard/cart')}}>
                 <FaCartShopping className="cartLogo"/>
                 <span className="absolute text-black top-0.5 md:top-1 lg:top-0 left-[0.8rem] sm:left-3.5 md:left-4 lg:left-[1.1rem] font-semibold text-xs lg:text-base">{!Object.keys(cart).length ? 0 : cart.totalQuantity}</span>
             </span>}
-            {user?.accountType==="Owner" && <div className="absolute sm:-mt-1 right-5 sm:right-[7%] cursor-pointer" onClick={handleToggleNotification}>
+            {user && user?.accountType==="Owner" && <div className="absolute sm:-mt-1 right-5 sm:right-[7%] cursor-pointer" onClick={handleToggleNotification}>
                 {liveOrders.length 
                 ? <span>
                     <MdNotificationsActive className={`cartLogo ${showNotification?'':'animate-shake'}`}/>

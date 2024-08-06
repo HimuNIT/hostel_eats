@@ -15,6 +15,7 @@ import {
 } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
 import { formatTime } from "../utils/formatTime";
+import Shimmer from '../components/common/Shimmer';
 
 const CustomPrevArrow = (props) => {
   const { onClick } = props;
@@ -47,8 +48,24 @@ const Home = () => {
   const navigate = useNavigate();
   const popularDishes = useSelector((state) => state.popularDishes);
   const [popularCanteens, setPopularCanteens] = useState([]);
+  const [loadingDishes, setLoadingDishes] = useState(true);
+  const [loadingCanteens, setLoadingCanteens] = useState(true);
+
   useEffect(() => {
-    getPopularDishes(dispatch);
+    const fetchPopularDishes = async () => {
+      setLoadingDishes(true);
+      await getPopularDishes(dispatch);
+      setLoadingDishes(false);
+    };
+  
+    const fetchPopularCanteens = async () => {
+      setLoadingCanteens(true);
+      const canteens = await getPopularCanteens();
+      setPopularCanteens(canteens);
+      setLoadingCanteens(false);
+    };
+  
+    fetchPopularDishes();
     fetchPopularCanteens();
   }, []);
   console.log("home=>", popularDishes);
@@ -191,7 +208,8 @@ const Home = () => {
           <p className="mt-5 md:mt-10 text-xs sm:text-xs md:text-sm lg:text-base">
             Made for MNNIT Students to order food
           </p>
-          <button className="bg-[#76ABAE] text-black text-sm md:text-base px-4 py-2 rounded-lg mt-10 md:mt-20 transition-all duration-300 hover:translate-x-[-4px] hover:translate-y-[-4px] hover:rounded-md hover:shadow-[4px_4px_0px_white] active:translate-x-[0px] active:translate-y-[0px] active:rounded-2xl active:shadow-none">
+          <button onClick={()=>navigate('/explore')}
+          className="bg-[#76ABAE] text-black text-sm md:text-base px-4 py-2 rounded-lg mt-10 md:mt-20 transition-all duration-300 hover:translate-x-[-4px] hover:translate-y-[-4px] hover:rounded-md hover:shadow-[4px_4px_0px_white] active:translate-x-[0px] active:translate-y-[0px] active:rounded-2xl active:shadow-none">
             Order Now →
           </button>
         </div>
@@ -208,6 +226,9 @@ const Home = () => {
           Popular Dishes
         </h1>
         <div className="relative max-w-full mx-auto">
+        {loadingDishes ? (
+            <Shimmer type="dish" />
+          ) : (
           <Slider {...settings} className="mx-4">
             {popularDishes?.map((dish) => (
               <div key={dish._id} className="px-2 w-full sm:w-auto">
@@ -237,6 +258,7 @@ const Home = () => {
               </div>
             ))}
           </Slider>
+          )}
         </div>
       </div>
 
@@ -246,6 +268,9 @@ const Home = () => {
           Popular Canteens
         </h1>
         <div className="relative max-w-full mx-auto">
+        {loadingCanteens ? (
+            <Shimmer type="canteen" />
+        ) : (
         <Slider {...settings2} className="mx-4">
           {popularCanteens?.map((canteen) => (
             <div key={canteen._id} className="px-2 w-full sm:w-auto">
@@ -278,6 +303,7 @@ const Home = () => {
             </div>
           ))}
         </Slider>
+          )}
         </div>
       </div>
     </div>

@@ -23,7 +23,8 @@ import { setCanteensData } from "../../slices/canteenPageSlice";
 import DishCard from "./DishCard";
 import Pagination from "../../components/common/Pagination";
 import { formatTime } from "../../utils/formatTime";
-import { setPagination } from "../../slices/paginationSlice";
+import { resetPagination, setPagination } from "../../slices/paginationSlice";
+import Shimmer from "../../components/common/Shimmer";
 
 const CustomPrevArrow = (props) => {
   const { onClick } = props;
@@ -63,6 +64,7 @@ const Explore = () => {
   const [filteredCanteens, setFilteredCanteens] = useState([]);
   const [searchType, setSearchType] = useState("dishes");
   const [showModal, setShowModal] = useState(null);
+  const [loadingResults, setLoadingResults] = useState(false);
   // const [currentItems, setCurrentItems] = useState([]);
   
 
@@ -86,8 +88,8 @@ const Explore = () => {
       console.log("dishes====>",dishes)
       dispatch(setPagination({
         allItems: dishes,
-        currentItems: currentItems.length ? currentItems : dishes.slice(0, 9),
-        currentPageNo: currentPageNo ? currentPageNo : 1,
+        currentItems: dishes.slice(0, 9),
+        currentPageNo: 1,
         itemsPerPage: 9,
         scrollTo: "search-input"
       }));
@@ -96,9 +98,15 @@ const Explore = () => {
       setFilteredCanteens(JSON.parse(savedFilteredCanteens));
     if (savedShowSearchOptions)
       setShowSearchOptions(JSON.parse(savedShowSearchOptions));
+
+    return ()=>{
+      dispatch(resetPagination());
+      localStorage.removeItem('pagination');
+    }
   }, []);
 
   const filterResults = async (input) => {
+    setLoadingResults(true);
     const lowerCaseInput = input.toLowerCase();
     const formData = {
       itemName: lowerCaseInput,
@@ -138,6 +146,7 @@ const Explore = () => {
       setFilteredCanteens([]);
       localStorage.setItem("filteredCanteens", JSON.stringify([]));
     }
+    setLoadingResults(false);
   };
 
   const handleSearchChange = (e) => {
@@ -291,7 +300,10 @@ const Explore = () => {
               ? "Search Results for Dishes"
               : "Search Results for Canteens"}
           </h2>
-          {searchType === "dishes" ? (
+          {loadingResults ? (
+            <Shimmer type="explore" />
+          ) : (
+          searchType === "dishes" ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {paginationData.currentItems.map((dish) => (
@@ -304,12 +316,6 @@ const Explore = () => {
                 ))}
               </div>
               <div className="flex justify-center mt-6">
-                {/* <Pagination
-                  allItems={filteredDishes}
-                  itemsPerPage={9}
-                  setCurrentItems={setCurrentItems}
-                  scrollTo="search-input"
-                /> */}
                 <Pagination/>
               </div>
             </>
@@ -343,10 +349,10 @@ const Explore = () => {
                 </div>
               ))}
             </div>
+            )
           )}
         </div>
       )}
-
       {!searchInput && (
         <div className="mt-[15%] sm:mt-0 sm:mb-10 sm:mt-18 sm:ml-8 md:mt-15 md:ml-2 px-4 sm:px-10">
           <h2 className="text-xl sm:text-3xl lg:text-4xl sm:ml-5 mb-10 text-center sm:text-left">
@@ -382,7 +388,7 @@ const Explore = () => {
         </div>
       )}
 
-      {showModal && <ConfirmationalModal modalData={showModal} />}
+      {showModal && <ConfirmationalModal modalData={showModal}/>}
     </div>
   );
 };

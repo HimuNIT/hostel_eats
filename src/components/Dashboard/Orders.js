@@ -7,19 +7,36 @@ import Pagination from "../common/Pagination";
 import Spinner from "../common/Spinner";
 import { SiTicktick } from "react-icons/si";
 import ViewDetailsModal from "../common/ViewDetailsModal";
+import { resetPagination, setPagination } from "../../slices/paginationSlice";
 
 const Orders = () => {
     
     const orderHistory = useSelector(store => store.orderHistory);
-    const [currentItems,setCurrentItems] = useState(null);
-    const [loading,setLoading] = useState(false);
+    const [loading,setLoading] = useState(true);
     const [isOpen,setIsOpen] = useState(false);
     const [showOrder,setShowOrder] = useState(null);
     const dispatch = useDispatch();
+    const paginationData = useSelector(store => store.pagination);
+    const { currentItems } = paginationData;
 
     useEffect(()=>{
-        setLoading(true);
-        getOrderHistory(dispatch).then(()=> setLoading(false));
+        console.log("orderhistory page.............................");
+        const fetchData = async()=>{
+            const result = await getOrderHistory(dispatch);
+            console.log("orderhistory===============",result);
+            if(result){
+                const paginationData = {allItems:result, currentItems:result.slice(0,10), 
+                itemsPerPage: 10, currentPageNo: 1, scrollTo: 'orderHistory'};
+                dispatch(setPagination(paginationData));
+                localStorage.setItem('pagination',JSON.stringify(paginationData));
+            }
+            setLoading(false);
+        }
+        fetchData();
+        return ()=>{
+            dispatch(resetPagination());
+            localStorage.removeItem('pagination');
+        }
     },[]);
 
     const handleToggleViewDetails = (order)=>{
@@ -38,7 +55,7 @@ const Orders = () => {
                 </div>
                 :<> 
                     <div className="grid grid-cols-2 w-full mt-5">
-                        {currentItems?.map( (order) =>{
+                        {currentItems.length===0 ? <div></div> : currentItems?.map( (order) =>{
                             const date = formatDate(order.createdAt.split('T')[0]);
                             const time = formatTime(order.createdAt.split('T')[1].split(':')[0]+":"+order.createdAt.split('T')[1].split(':')[1]);
                             // const items = order.items.map(item => item.item.name + " x " + item.quantity).join(', ');
@@ -86,7 +103,7 @@ const Orders = () => {
                         })}
                     </div>
                     {isOpen && <ViewDetailsModal close={handleToggleViewDetails} order={showOrder}/>}
-                    <Pagination allItems={orderHistory} itemsPerPage={10} setCurrentItems={setCurrentItems} scrollTo={"orderHistory"}/>
+                    <Pagination/>
                 </>}
             </div>}
         </div>

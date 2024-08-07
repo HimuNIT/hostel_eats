@@ -4,8 +4,10 @@ const User=require("../models/user");
 const Item = require("../models/item");
 const jwt=require("jsonwebtoken");
 const Order=require("../models/order");
+const nodemailer = require("nodemailer");
 require("dotenv").config();
-
+const path = require("path");
+const fs = require("fs");
 // const cloudinary = require("cloudinary").v2;
 const {isFileTypeSupported,uploadFileToCloudinary}=require("../utils/cloudinary")
 //Canteen Add
@@ -481,17 +483,73 @@ exports.acceptRejectOrder=async(req,res) =>{
         message: "Order not found",
       });
     }
+    if (status == "rejected") {
+      if (order.status == "rejected") {
+        return res.status(200).json({
+          success: true,
+          message: "Status is already Rejected",
+        });
+      }
+      const canten = await Merchant.findById({ _id: order.shopid });
+      if (order.paymentstatus == "paid") {
+        canten.totalRevenue = canten.totalRevenue - order.totalAmount;
+        canten.onlineMoney = canten.onlineMoney - order.totalAmount;
+      } else {
+        canten.totalRevenue = canten.totalRevenue - order.totalAmount;
+        canten.cashMoney = canten.cashMoney - order.totalAmount;
+      }
 
+      await canten.save();
+    }
     order.status = status;
     await order.save();
     // Emit status update to customer
     const io = req.app.get("io");
-    io.to(order.userid.toString()).emit("orderStatusUpdate", {
+    io.to(order.userid._id.toString()).emit("orderStatusUpdate", {
       orderid,
       status,
     });
-  
 
+ //email Send
+    if (status == "rejected") {
+      const templatePath = path.join(
+        __dirname,
+        "../templates/refundTemplate.html"
+      );
+
+      let html = fs.readFileSync(templatePath, "utf8");
+      // Replace placeholder with actual OTP
+      html = html.replace(
+        "{{userName}}",
+        order.userid.firstName + " " + order.userid.lastName
+      );
+      html = html.replace("{{orderId}}", orderid);
+      html = html.replace("{{totalAmount}}", order.totalAmount);
+      html = html.replace("{{paymentStatus}}", order.paymentstatus);
+      html = html.replace("{{canteen}}", canten.canteenName);
+      html = html.replace("{{canteenContact}}", canten.canteenContact);
+      // Send OTP via email
+      let transporter = nodemailer.createTransport({
+        service: "gmail", // Use your email service
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      // Email content
+
+      let mailOptions = {
+        from: process.env.EMAIL_USER, // Sender address
+        to: order.userid.email, // List of recipients (canteen's email)
+        subject: "Refund Request for Order",
+        html: html,
+        replyTo: process.env.NO_REPLY_EMAIL,
+      };
+
+      // Send email
+      transporter.sendMail(mailOptions);
+    }
     res.status(200).json({
       success: true,
       message: `Order ${status} successfully`,
@@ -513,18 +571,20 @@ exports.liveOrders=async(req,res)=>{
   try{
       const payload=req.user;
 
-      const orders = await Order.find({
-        merchantid: payload.id,
-        status: { $ne: "completed" },
-      })
-        .populate({ path: "items.item", select: "name imageUrl shopid" })
-        .sort({ createdAt: -1 })
-        .select(
-          "_id userid merchantid shopid items totalAmount paymentStatus status createdAt"
+    const orders = await Order.find({
+      merchantid: payload.id,
+      status: { $nin: ["completed", "rejected"] },
+    })
+      .populate({ path: "items.item", select: "name imageUrl shopid" })
+      .sort({ createdAt: -1 })
+      .select(
+        "_id userid merchantid shopid items totalAmount paymentStatus status createdAt"
+      );
+    const updatedOrder = await Promise.all(
+      orders.map(async (order) => {
+        const canteen = await Merchant.findById(order.shopid).select(
+          "canteenName"
         );
-    const updatedOrder=await Promise.all(
-      orders.map(async(order)=>{
-        const canteen=await Merchant.findById(order.shopid).select("canteenName");
 
         //First Item Image URL
         const firstImageUrl=order.items.length>0 ? order.items[0].item.imageUrl:null;
@@ -551,3 +611,90 @@ exports.liveOrders=async(req,res)=>{
     })
   }
 } 
+
+
+exports.rejectOrder=async(req,res)=>{
+  try{
+    const { orderid } = req.body;
+    // Find and update order
+    const order = await Order.findById({ _id: orderid }).populate("userid");
+    if (!order) {
+      return res.status(200).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+    if (order.status == "rejected") {
+      return res.status(200).json({
+        success: true,
+        message: "Status is already Rejected",
+      });
+    }
+    const canten = await Merchant.findById({ _id: order.shopid });
+    if (order.paymentstatus == "paid") {
+      canten.totalRevenue = canten.totalRevenue - order.totalAmount;
+      canten.onlineMoney = canten.onlineMoney - order.totalAmount;
+    } else {
+      canten.totalRevenue = canten.totalRevenue - order.totalAmount;
+      canten.cashMoney = canten.cashMoney - order.totalAmount;
+    }
+    order.status = "rejected";
+    await order.save();
+    await canten.save();
+    const status = "rejected";
+    // Emit status update to customer
+    const io = req.app.get("io");
+    io.to(order.userid.toString()).emit("orderStatusUpdate", {
+      orderid,
+      status,
+    });
+
+    const templatePath = path.join(
+      __dirname,
+      "../templates/refundTemplate.html"
+    );
+
+    let html = fs.readFileSync(templatePath, "utf8");
+    // Replace placeholder with actual OTP
+    html = html.replace("{{userName}}", order.userid.firstName+" "+order.userid.lastName);
+    html = html.replace(
+      "{{orderId}}",orderid
+    );
+       html = html.replace("{{totalAmount}}", order.totalAmount);
+        html = html.replace("{{paymentStatus}}",order.paymentstatus);
+             html = html.replace("{{canteen}}", canten.canteenName);
+                  html = html.replace("{{canteenContact}}", canten.canteenContact);
+    // Send OTP via email
+    let transporter = nodemailer.createTransport({
+      service: "gmail", // Use your email service
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    // Email content
+
+    let mailOptions = {
+      from: process.env.EMAIL_USER, // Sender address
+      to: order.userid.email, // List of recipients (canteen's email)
+      subject: "Refund Request for Order",
+      html: html,
+      replyTo: process.env.NO_REPLY_EMAIL,
+    };
+
+    // Send email
+    transporter.sendMail(mailOptions);
+    res.status(200).json({
+      success: true,
+      message: `Order ${status} successfully`,
+    });
+  }
+  catch(error){
+    console.log(error);
+    res.status(400).json({
+      success:false,
+      message:"Something Went Wrong"
+    })
+  }
+}

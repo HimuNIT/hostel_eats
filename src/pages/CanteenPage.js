@@ -6,6 +6,7 @@ import ConfirmationalModal from '../components/common/ConfirmationalModal';
 import { setCanteenDetails } from '../slices/canteenPageSlice';
 import { toggleFavouriteItem } from '../services/favouriteAPI'; 
 import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
+import { formatTime } from '../utils/formatTime';
 
 const CanteenPage = () => {
     const { canteenId } = useParams();
@@ -103,8 +104,8 @@ const CanteenPage = () => {
             <div className="bg-[#31363F] w-full sm:w-7/12 mx-auto p-4 sm:p-6 rounded-lg shadow-2xl mb-6 flex flex-col items-center">
                 <h1 className="text-2xl sm:text-4xl font-bold mb-2 text-center">{canteenData?.canteenName}</h1>
                 <p className="text-gray-400 mb-1 text-center">Address: {canteenData?.address}</p>
-                <p className="text-gray-400 mb-1 text-center">Opening Time: {canteenData?.openingTime}</p>
-                <p className="text-gray-400 mb-1 text-center">Closing Time: {canteenData?.closingTime}</p>
+                <p className="text-gray-400 mb-1 text-center">Opening Time: {canteenData?.openingTime?formatTime(canteenData.openingTime):"NA"}</p>
+                <p className="text-gray-400 mb-1 text-center">Closing Time: {canteenData?.closingTime?formatTime(canteenData.closingTime):"NA"}</p>
                 <p className="text-gray-400 mb-1 text-center">Status: {canteenData?.status}</p>
             </div>
             <div className="text-center">
@@ -125,10 +126,10 @@ const CanteenPage = () => {
                 </form>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:gap-6 justify-items-center">
+            <div className="grid grid-cols-1 gap-4 mb-24 sm:gap-6 justify-items-center">
                 {itemsToDisplay.map(item => (
                     <div key={item._id} className="bg-[#31363F] sm:mt-0 sm:mb-0 mb-5 mt-5  rounded-lg shadow-lg w-full sm:w-7/12 flex flex-col sm:flex-row justify-between items-center relative sm:p-4 p-4 pb-8">
-                        <div className="flex-grow mb-4 sm:mb-0">
+                        <div className="flex-grow mb-4 sm:mb-0 sm:mr-4">
                             <h3 className="text-xl font-semibold mb-2">{item.name}</h3>
                             <p className="text-gray-400 mb-2 break-words">{item.description}</p>
                             <p className="text-gray-400 mb-2">Price: ₹{item.price}</p>

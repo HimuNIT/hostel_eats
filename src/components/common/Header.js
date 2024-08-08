@@ -112,7 +112,7 @@ const Header = () => {
 
     return (
         <div className="fixed w-full z-40 flex bg-gradient-to-r from-black to-[#222831] text-white pt-10 pb-4">
-            <h1 className={`${user?'ml-[34%]':'ml-[38%]'} sm:ml-[8%] md:ml-[10%] text-xl sm:text-xl lg:text-3xl`} onClick={()=>navigate('/')}>Hostel Eats</h1>
+            <h1 className={`${user?'ml-[34%]':'ml-[38%]'} sm:ml-[8%] md:ml-[10%] text-xl sm:text-xl lg:text-3xl cursor-pointer`} onClick={()=>navigate('/')}>Hostel Eats</h1>
             <div className={`hidden sm:flex  sm:gap-4 lg:gap-7 sm:text-sm lg:text-base mt-1 ${user ? "sm:ml-[18%] md:ml-[20%] lg:ml-[22%] xl:ml-[24%]":'sm:ml-[10%] md:ml-[14%] lg:ml-[18%]'}`}>
                 {tabs.map(tab => <span key={tab.name}><Tab><NavLink to={tab.to} className={({isActive}) => ` ${isActive?"text-[#76ABAE]":""}`}>{tab.name}</NavLink></Tab></span>)}
             </div>
@@ -151,7 +151,7 @@ const Header = () => {
                 {liveOrders.length 
                 ? <span>
                     <MdNotificationsActive className={`cartLogo ${showNotification?'':'animate-shake'}`}/>
-                    <span className="text-black absolute top-2 left-[0.6rem] sm:left-2 md:left-2.5 lg:left-3 text-[0.65rem] sm:text-xs lg:text-sm font-semibold lg:font-bold">{liveOrders.length}</span>
+                    <span className="text-black absolute top-2 left-[0.6rem] sm:left-2 md:left-2.5 lg:left-3.5 text-[0.65rem] sm:text-xs lg:text-sm font-semibold lg:font-bold">{liveOrders.length}</span>
                 </span> 
                 :<MdNotifications className="cartLogo"/>}
                 <AnimatePresence>
